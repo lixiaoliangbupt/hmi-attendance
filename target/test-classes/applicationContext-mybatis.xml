@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+	http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+	http://www.springframework.org/schema/tx
+	http://www.springframework.org/schema/tx/spring-tx.xsd
+	http://www.springframework.org/schema/aop
+	http://www.springframework.org/schema/aop/spring-aop.xsd">
+
+    <!-- 声明使用注解式事务 -->
+    <tx:annotation-driven transaction-manager="mybatisTransactionManager" />
+
+    <bean id="dataSource" name="dataSource" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
+        <!--建议加Name属性，方便监控报警，如果多个dataSource，主要的dataSource Name为default-->
+        <property name="name" value="default"/>
+        <!-- 基本属性 url、user、password -->
+        <property name="url" value="${jdbc_url}"/>
+        <property name="username" value="${jdbc_username}"/>
+        <property name="password" value="${jdbc_password}"/>
+
+        <property name="driverClassName" value="${jdbc_driverClassName}"/>
+
+        <!-- 配置初始化大小、最小、最大 -->
+        <property name="initialSize" value="${jdbc_initialSize}"/>
+        <property name="minIdle" value="${jdbc_minIdle}"/>
+        <property name="maxActive" value="${jdbc_maxActive}"/>
+
+        <!-- 配置获取连接等待超时的时间 -->
+        <property name="maxWait" value="${jdbc_maxWait}"/>
+
+        <!-- 配置间隔多久才进行一次检测，检测需要关闭的空闲连接，单位是毫秒 -->
+        <property name="timeBetweenEvictionRunsMillis" value="${jdbc_timeBetweenEvictionRunsMillis}"/>
+
+        <!-- 配置一个连接在池中最小生存的时间，单位是毫秒 -->
+        <property name="minEvictableIdleTimeMillis" value="${jdbc_minEvictableIdleTimeMillis}"/>
+
+        <property name="testWhileIdle" value="${jdbc_testWhileIdle}"/>
+        <property name="testOnBorrow" value="${jdbc_testOnBorrow}"/>
+        <property name="validationQuery" value="${jdbc_validationQuery}"/>
+        <!-- 如果需要支持utf8mb4编码的话打开 -->
+        <!--<property name="connectionInitSqls" value="${jdbc_connectionInitSqls}"/>-->
+    </bean>
+
+    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <property name="dataSource" ref="dataSource"/>
+        <!-- 配置扫描Domain的包路径 -->
+        <property name="typeAliasesPackage" value="com.globot.hmi.attendance.domain"/>
+        <!-- 配置mybatis配置文件的位置 -->
+        <property name="configLocation" value="classpath:mybatis-config.xml"/>
+        <!-- 配置扫描Mapper XML的位置 -->
+        <!--<property name="mapperLocations"-->
+        <!--value="classpath*:/mapper/**/*.xml"/>-->
+        <property name="mapperLocations"
+                  value="classpath:mapper/**/*.xml"/>
+    </bean>
+
+    <!-- 配置扫描Mapper接口的包路径 -->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="basePackage" value="com.globot.hmi.attendance.dao.mapper"/>
+        <property name="sqlSessionFactoryBeanName" value="sqlSessionFactory"/>
+        <!--<property name="annotationClass" value="org.springframework.stereotype.Repository"/>-->
+    </bean>
+
+    <bean id="sqlSessionTemplate" class="org.mybatis.spring.SqlSessionTemplate">
+        <constructor-arg ref="sqlSessionFactory"/>
+    </bean>
+
+    <!-- disable transaction -->
+    <bean id="mybatisTransactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <constructor-arg ref="dataSource"/>
+    </bean>
+
+    <tx:advice id="mybatisAdvice" transaction-manager="mybatisTransactionManager">
+        <tx:attributes>
+            <tx:method name="save*" propagation="REQUIRED" timeout="60"/>
+            <tx:method name="insert*" propagation="REQUIRED" timeout="60"/>
+            <tx:method name="add*" propagation="REQUIRED" timeout="60"/>
+            <tx:method name="update*" propagation="REQUIRED" timeout="60"/>
+            <tx:method name="delete*" propagation="REQUIRED" timeout="60"/>
+            <tx:method name="remove*" propagation="REQUIRED" timeout="60"/>
+            <tx:method name="accept*" propagation="REQUIRED" timeout="60"/>
+            <tx:method name="reject*" propagation="REQUIRED" timeout="60"/>
+            <tx:method name="execute*" propagation="REQUIRED" timeout="60"/>
+            <tx:method name="del*" propagation="REQUIRED" timeout="60"/>
+            <tx:method name="recover*" propagation="REQUIRED" timeout="60"/>
+            <tx:method name="sync*" propagation="REQUIRED" timeout="60"/>
+            <tx:method name="start*" propagation="REQUIRED" timeout="60"/>
+            <tx:method name="stop*" propagation="REQUIRED" timeout="60"/>
+            <tx:method name="import*" propagation="REQUIRED" timeout="60"/>
+            <tx:method name="create*" propagation="REQUIRED" timeout="60"/>
+            <tx:method name="transfer*" propagation="REQUIRED" timeout="60"/>
+            <tx:method name="send" propagation="REQUIRED" timeout="60"/> <!-- rabbitMQ 发送消息的接口-->
+            <!--取消注释将无法使用atlas的读写分离属性，带事务的sql将全部发往master节点-->
+            <!--<tx:method name="*" read-only="true"/>-->
+        </tx:attributes>
+    </tx:advice>
+
+    <aop:config>
+        <aop:pointcut id="mybatisPointcut"
+                      expression="execution(public * com.globot.hmi.attendance.service..*Impl.*(..))"/>
+        <aop:advisor pointcut-ref="mybatisPointcut" advice-ref="mybatisAdvice"/>
+    </aop:config>
+
+</beans>
